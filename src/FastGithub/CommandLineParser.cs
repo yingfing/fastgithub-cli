@@ -55,6 +55,13 @@ namespace FastGithub
                 return true;
             }
 
+            // start/stop 为服务控制指令，需启动主机后由 UseCommand 处理
+            if (string.Equals(argument, "start", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(argument, "stop", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
             // 首参数既非指令也不以-开头（不是参数），判定为输错指令：
             // 给出提示并不再启动主机，避免误以为执行了指令
             if (string.IsNullOrEmpty(argument) == false && argument.StartsWith("-") == false)
