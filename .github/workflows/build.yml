@@ -1,0 +1,103 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build:
+    name: publish ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            os: windows-latest
+            archive: zip
+          - rid: linux-x64
+            os: ubuntu-latest
+            archive: tar.gz
+          - rid: linux-arm64
+            os: ubuntu-latest
+            archive: tar.gz
+          - rid: osx-x64
+            os: macos-latest
+            archive: tar.gz
+          - rid: osx-arm64
+            os: macos-latest
+            archive: tar.gz
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish
+        shell: bash
+        run: |
+          dotnet publish src/FastGithub/FastGithub.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:PublishTrimmed=true \
+            -p:DebugType=none \
+            -p:DebugSymbols=false \
+            -o "publish/${{ matrix.rid }}"
+
+      - name: Package (zip)
+        if: matrix.archive == 'zip'
+        shell: bash
+        run: |
+          cd publish
+          powershell -Command "Compress-Archive -Path '${{ matrix.rid }}' -DestinationPath 'fastgithub_${{ matrix.rid }}.zip' -Force"
+
+      - name: Package (tar.gz)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          cd publish
+          tar -czf "fastgithub_${{ matrix.rid }}.tar.gz" "${{ matrix.rid }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastgithub_${{ matrix.rid }}
+          path: publish/fastgithub_${{ matrix.rid }}.${{ matrix.archive }}
+          if-no-files-found: error
+
+  release:
+    name: Create release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -laR artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
