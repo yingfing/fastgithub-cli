@@ -1,4 +1,4 @@
-﻿using DNS.Protocol;
+using DNS.Protocol;
 using DNS.Protocol.ResourceRecords;
 using FastGithub.Configuration;
 using Microsoft.Extensions.Logging;
@@ -22,7 +22,9 @@ namespace FastGithub.PacketIntercept.Dns
     [SupportedOSPlatform("windows")]
     sealed class DnsInterceptor : IDnsInterceptor
     {
-        private static readonly Filter filter = Filter.True.And(f => f.Udp.DstPort == 53);
+        private static readonly Filter loopbackFilter = Filter.True
+            .And(f => f.Network.Loopback)
+            .And(f => f.Udp.DstPort == 53);
 
         private readonly FastGithubConfig fastGithubConfig;
         private readonly ILogger<DnsInterceptor> logger;
@@ -60,7 +62,7 @@ namespace FastGithub.PacketIntercept.Dns
         /// <returns></returns>
         public async Task InterceptAsync(CancellationToken cancellationToken)
         {
-            using var divert = new WinDivert(filter, WinDivertLayer.Network);
+            using var divert = new WinDivert(loopbackFilter, WinDivertLayer.Network);
             using var packet = new WinDivertPacket();
             using var addr = new WinDivertAddress();
 

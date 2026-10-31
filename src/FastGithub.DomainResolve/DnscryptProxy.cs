@@ -1,4 +1,4 @@
-﻿using FastGithub.Configuration;
+using FastGithub.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
@@ -151,12 +151,8 @@ namespace FastGithub.DomainResolve
                 return null;
             }
 
-            // windows下本机dns由WinDivert透明拦截直接应答，局域网查询会被误应答为回环地址，故不开放
-            if (OperatingSystem.IsWindows())
-            {
-                this.logger.LogWarning("windows下透明dns拦截与局域网dns监听冲突，已仅监听本机；如需局域网dns请在linux/macos部署");
-                return null;
-            }
+            // windows下本机dns由WinDivert透明拦截直接应答，原先会误应答局域网查询，故直接禁用；
+            // 现已让DnsInterceptor按本机dns监听地址排除局域网来源包，此处允许开启
 
             if (IPAddress.TryParse(address, out var ip) == false)
             {
