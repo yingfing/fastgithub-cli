@@ -10,7 +10,7 @@ _fastgithub_completion()
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     local subcommands="start stop config"
-    local options="-h --help --port --listen --dns --log-level --udp-port"
+    local options="-h --help --port --listen --dns-listen --dns-port --dns --log-level --udp-port"
     local config_actions="list get set unset"
 
     # 第一层：指令与参数
@@ -46,7 +46,10 @@ _fastgithub_completion()
         --port|--udp-port)
             COMPREPLY=( $(compgen -W "38457 38458 8080 9000" -- "${cur}") )
             ;;
-        --listen)
+        --dns-port)
+            COMPREPLY=( $(compgen -W "53 5353 8053" -- "${cur}") )
+            ;;
+        --listen|--dns-listen)
             COMPREPLY=( $(compgen -W "localhost 0.0.0.0" -- "${cur}") )
             ;;
         --log-level)

@@ -56,6 +56,8 @@ fastgithub config unset FastGithub:DomainConfigs:github.com
 | --- | --- |
 | `--port <端口>` | http 代理端口，如 `--port 9000` |
 | `--listen <地址>` | 监听地址，`localhost` 仅本机（默认），`0.0.0.0` 监听所有网卡允许局域网设备连接 |
+| `--dns-listen <地址>` | dns 监听地址，`localhost` 仅本机（默认），`0.0.0.0` 允许局域网设备使用本机 dns |
+| `--dns-port <端口>` | dns 监听端口，默认 `53`，仅当 `--dns-listen` 不是 `localhost` 时生效 |
 | `--dns <ip:端口>` | 回退 DNS，可多次指定，按序号覆盖配置项 |
 | `--log-level <级别>` | 全局日志级别，如 `--log-level Debug` |
 | `--udp-port <端口>` | UDP 日志端口 |
@@ -82,6 +84,8 @@ fastgithub --FastGithub:DomainConfigs:github.com:TlsSni=false
 | --- | --- | --- |
 | `FastGithub:HttpProxyPort` | `38457` | http 代理端口 |
 | `FastGithub:ListenAddress` | `localhost` | 监听地址；`0.0.0.0` 监听所有网卡，允许局域网其它设备连接（见 3.6） |
+| `FastGithub:DnsListenAddress` | `localhost` | dns 监听地址；`0.0.0.0` 允许局域网设备将 dns 指向本机（见 3.7） |
+| `FastGithub:DnsListenPort` | `53` | dns 监听端口，仅当 `DnsListenAddress` 不是 `localhost` 时生效 |
 | `FastGithub:FallbackDns` | `8.8.8.8:53` 等 | 回退 DNS，须支持 TCP |
 | `AppOptions:UdpLoggerPort` | `38457` | UDP 日志端口 |
 
@@ -134,7 +138,8 @@ Add-Content $PROFILE ". /path/to/FastGithub-Project/completions/fastgithub-compl
 | `fastgithub config <Tab>` | list、get、set、unset |
 | `fastgithub config get/set/unset <Tab>` | 全部配置键（动态读取） |
 | `--port`/`--udp-port` `<Tab>` | 38457、38458、8080、9000 |
-| `--listen` `<Tab>` | localhost、0.0.0.0 |
+| `--dns-port` `<Tab>` | 53、5353、8053 |
+| `--listen`/`--dns-listen` `<Tab>` | localhost、0.0.0.0 |
 | `--log-level` `<Tab>` | Verbose、Debug、Information、Warning、Error、Fatal |
 | `--dns` `<Tab>` | 8.8.8.8:53、119.29.29.29:53、114.114.114.114:53 |
 
@@ -222,6 +227,56 @@ git config --global http.sslverify false
 客户端访问 github.com，或执行 `git clone https://github.com/<用户>/<仓库>.git`，速度正常即接入成功。
 
 > **安全提示**：代理中间人会解密并重新签发 TLS 流量，请仅在可信内网使用，切勿暴露到公网；服务端的 CA 证书私钥不要泄露给他人。
+
+#### 3.7 局域网 DNS 接入（让其它设备把 DNS 指向本机）
+
+内置 dnscrypt-proxy 默认只监听本机回环地址。按以下步骤把它开放到局域网（以端口 53 为例）：
+
+**1. 服务端开放监听**
+
+```bash
+fastgithub config set FastGithub:DnsListenAddress 0.0.0.0
+# 可选：改监听端口，默认 53
+fastgithub config set FastGithub:DnsListenPort 53
+# 重启生效；也可当次临时生效
+fastgithub --dns-listen 0.0.0.0 --dns-port 53
+```
+
+> `DnsListenAddress` 与 `ListenAddress` 相互独立：只开 DNS 不必开 http 代理，反之亦然。
+> 53 端口在 Linux/macOS 属于特权端口，需要 root 或 `CAP_NET_BIND_SERVICE`；非 root 请改用 `--dns-port 5353` 等高位端口。
+> 监听地址也可指定为本机某块网卡的具体 IP，仅对该网卡开放。
+> 端口被占用或无权绑定时，程序会打印警告并回退为仅本机监听，不会影响其它功能。
+
+**2. 防火墙放行端口**
+
+```bash
+# linux (firewalld)
+sudo firewall-cmd --add-port=53/udp --add-port=53/tcp --permanent && sudo firewall-cmd --reload
+# linux (ufw)
+sudo ufw allow 53/udp
+sudo ufw allow 53/tcp
+# windows（管理员权限）
+netsh advfirewall firewall add rule name="FastGithubDNS" dir=in action=allow protocol=UDP localport=53
+netsh advfirewall firewall add rule name="FastGithubDNS" dir=in action=allow protocol=TCP localport=53
+```
+
+**3. 客户端配置 DNS**（`<服务器IP>` 换成运行 fastgithub 设备的局域网 IP）
+
+* 系统/路由器 DNS：首选 DNS 填 `<服务器IP>`；路由器统一下发时，所有局域网设备自动生效
+* 或只对单台设备生效：在网卡 DNS 设置里加入 `<服务器IP>`
+* 端口不是 53 时，系统级 DNS 不支持自定义端口，需用支持 `ip:port` 的客户端（如 `dig @<服务器IP> -p 5353 github.com`、`nslookup -port=5353 github.com <服务器IP>`）
+
+**4. 验证**
+
+```bash
+dig @<服务器IP> github.com
+nslookup github.com <服务器IP>
+```
+
+**5. 注意**
+
+* 只开放 DNS 时，DNS 解析会返回加速后的 IP，但 HTTPS 流量仍会直连；要完整加速网页/仓库访问，仍需按 3.6 配置代理并安装 CA 证书。
+* DNS 服务本身不区分访问来源，请仅在可信内网开放，切勿把 53 端口暴露到公网。
 
 ### 4 日志
 * 控制台实时输出

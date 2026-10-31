@@ -6,7 +6,7 @@ Register-ArgumentCompleter -CommandName fastgithub, fastgithub.exe -ScriptBlock 
     param($wordToComplete, $commandAst, $cursorPosition)
 
     $subcommands = @('start', 'stop', 'config')
-    $options = @('-h', '--help', '--port', '--listen', '--dns', '--log-level', '--udp-port')
+    $options = @('-h', '--help', '--port', '--listen', '--dns-listen', '--dns-port', '--dns', '--log-level', '--udp-port')
     $configActions = @('list', 'get', 'set', 'unset')
 
     $elements = @($commandAst.CommandElements)
@@ -73,7 +73,9 @@ Register-ArgumentCompleter -CommandName fastgithub, fastgithub.exe -ScriptBlock 
     switch ($prev) {
         '--port' { Add-Completion @('38457', '38458', '8080', '9000'); return }
         '--udp-port' { Add-Completion @('38457', '38458', '8080', '9000'); return }
+        '--dns-port' { Add-Completion @('53', '5353', '8053'); return }
         '--listen' { Add-Completion @('localhost', '0.0.0.0'); return }
+        '--dns-listen' { Add-Completion @('localhost', '0.0.0.0'); return }
         '--log-level' { Add-Completion @('Verbose', 'Debug', 'Information', 'Warning', 'Error', 'Fatal'); return }
         '--dns' { Add-Completion @('8.8.8.8:53', '119.29.29.29:53', '114.114.114.114:53'); return }
     }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -17,16 +18,30 @@ namespace FastGithub.DomainResolve
         /// 设置监听地址
         /// </summary>
         /// <param name="tomlPath"></param>
-        /// <param name="endpoint"></param>
+        /// <param name="endpoints"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public static Task SetListensAsync(string tomlPath, IPEndPoint endpoint, CancellationToken cancellationToken)
+        public static Task SetListensAsync(string tomlPath, IEnumerable<IPEndPoint> endpoints, CancellationToken cancellationToken)
         {
-            var value = new TomlArray
+            var value = new TomlArray();
+            foreach (var endpoint in endpoints)
             {
-                endpoint.ToString()
-            };
+                value.Add(FormatEndPoint(endpoint));
+            }
             return SetAsync(tomlPath, "listen_addresses", value, cancellationToken);
+        }
+
+        /// <summary>
+        /// 格式化节点为dnscrypt-proxy可识别的地址，ipv6需要中括号
+        /// </summary>
+        /// <param name="endpoint"></param>
+        /// <returns></returns>
+        private static string FormatEndPoint(IPEndPoint endpoint)
+        {
+            var address = endpoint.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6
+                ? $"[{endpoint.Address}]"
+                : endpoint.Address.ToString();
+            return $"{address}:{endpoint.Port}";
         }
 
         /// <summary>

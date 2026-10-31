@@ -16,6 +16,8 @@ namespace FastGithub
         {
             ["--port"] = "FastGithub:HttpProxyPort",
             ["--listen"] = "FastGithub:ListenAddress",
+            ["--dns-listen"] = "FastGithub:DnsListenAddress",
+            ["--dns-port"] = "FastGithub:DnsListenPort",
             ["--dns"] = "FastGithub:FallbackDns",
             ["--log-level"] = "Serilog:MinimumLevel:Default",
             ["--udp-port"] = "AppOptions:UdpLoggerPort",

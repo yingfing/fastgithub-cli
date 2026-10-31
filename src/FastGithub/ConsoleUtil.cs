@@ -62,6 +62,8 @@ namespace FastGithub
             Console.WriteLine("临时覆盖参数（仅当次运行生效，优先级高于配置文件）：");
             Console.WriteLine("  --port <端口>            http代理端口，如 --port 9000");
             Console.WriteLine("  --listen <地址>         监听地址，localhost仅本机(默认)，0.0.0.0允许局域网设备连接");
+            Console.WriteLine("  --dns-listen <地址>     dns监听地址，localhost仅本机(默认)，0.0.0.0允许局域网设备使用本机dns");
+            Console.WriteLine("  --dns-port <端口>       dns监听端口，默认53，仅当--dns-listen不是localhost时生效");
             Console.WriteLine("  --dns <ip:端口>         回退dns，可多次指定，按序号覆盖");
             Console.WriteLine("  --log-level <级别>      全局日志级别，如 --log-level Debug");
             Console.WriteLine("  --udp-port <端口>       udp日志端口");
